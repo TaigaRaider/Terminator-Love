@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Question.</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --accent: #ff2a6d;
+            --text: #f0f0f0;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: #000;
+            overflow: hidden; /* We handle scrolling manually */
+            font-family: 'Montserrat', sans-serif;
+            color: var(--text);
+            user-select: none;
+        }
+
+        canvas {
+            position: fixed; top: 0; left: 0; z-index: 1;
+        }
+
+        /* --- UI OVERLAYS --- */
+        #start-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100;
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            transition: opacity 1s ease;
+            cursor: pointer;
+        }
+
+        #start-screen h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 2rem; letter-spacing: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        #start-screen p {
+            font-size: 0.8rem; opacity: 0.6; margin-top: 10px; text-transform: uppercase;
+        }
+
+        /* --- SCROLL TEXT --- */
+        #ui-layer {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 10; pointer-events: none; /* Let clicks pass to canvas/buttons */
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .narrative {
+            position: absolute;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.5s ease-out;
+            width: 80%;
+        }
+
+        .narrative h2 {
+            font-family: 'Cinzel', serif; font-size: 2.5rem; margin-bottom: 0.5rem;
+        }
+
+        .visible { opacity: 1; transform: translateY(0); }
+
+        /* --- FINAL PROPOSAL UI --- */
+        #proposal-container {
+            position: absolute;
+            bottom: 15%; left: 0; width: 100%;
+            display: flex; flex-direction: column; align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 1s ease;
+            z-index: 20;
+        }
+
+        .btn-group {
+            position: relative;
+            width: 300px; height: 100px;
+            margin-top: 30px;
+        }
+
+        button {
+            position: absolute;
+            padding: 15px 40px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(0,0,0,0.5);
+            color: white;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1rem; text-transform: uppercase; letter-spacing: 2px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+            pointer-events: auto; /* Re-enable clicks */
+            border-radius: 4px;
+        }
+
+        #yes-btn {
+            left: 50%; transform: translateX(-140%);
+            border-color: var(--accent);
+            box-shadow: 0 0 15px rgba(255, 42, 109, 0.2);
+        }
+        
+        #yes-btn:hover {
+            background: var(--accent);
+            box-shadow: 0 0 30px rgba(255, 42, 109, 0.6);
+        }
+
+        #no-btn {
+            left: 50%; transform: translateX(40%);
+            background: #333;
+        }
+
+        /* --- PROGRESS BAR --- */
+        #progress-bar {
+            position: fixed; bottom: 0; left: 0; height: 3px; background: var(--accent); width: 0%; z-index: 50;
+        }
+
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
+        /* Win screen styles */
+        #celebration {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 200;
+            display: flex; justify-content: center; align-items: center;
+            clip-path: circle(0% at 50% 50%);
+            transition: clip-path 1.5s ease-in-out;
+        }
+        #celebration.active { clip-path: circle(150% at 50% 50%); }
+        #celebration h1 { color: #000; font-family: 'Cinzel', serif; font-size: 3rem; }
+
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1>Initialise</h1>
+        <p>(Tap anywhere to begin)</p>
+    </div>
+
+    <canvas id="world"></canvas>
+    <div id="progress-bar"></div>
+
+    <div id="ui-layer">
+        <div class="narrative" id="text1">
+            <h2>The universe is vast.</h2>
+            <p>Billions of stars. Infinite time.</p>
+        </div>
+        <div class="narrative" id="text2">
+            <h2>Yet somehow...</h2>
+            <p>Paths aligned.</p>
+        </div>
+        <div class="narrative" id="text3">
+            <h2>And now I have just one question.</h2>
+        </div>
+    </div>
+
+    <div id="proposal-container">
+        <h2 style="font-family: 'Cinzel'; font-size: 2rem; text-shadow: 0 2px 10px black;">Will you be my Valentine?</h2>
+        <div class="btn-group">
+            <button id="yes-btn">Yes</button>
+            <button id="no-btn">No</button>
+        </div>
+    </div>
+
+    <div id="celebration">
+        <h1>It's a date. ❤️</h1>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        /* * ------------------------------------------------------------------
+         * ENGINE CONFIGURATION
+         * ------------------------------------------------------------------
+         */
+        const CONFIG = {
+            particleCount: 800,
+            depth: 2000,
+            transitionSpeed: 0.05 // How fast smooth scroll catches up
+        };
+
+        const canvas = document.getElementById('world');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        // State
+        let started = false;
+        let scrollPos = 0; // 0 to 10000
+        let targetScroll = 0;
+        let particles = [];
+        
+        // Timings (Scroll Points)
+        const SCENES = {
+            INTRO: 0,
+            WARP: 3000,
+            ALIGN: 6000,
+            HEART: 8000,
+            END: 10000
+        };
+
+        /* * ------------------------------------------------------------------
+         * CORE: RESIZE & INIT
+         * ------------------------------------------------------------------
+         */
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0,0,width,height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        /* * ------------------------------------------------------------------
+         * PARTICLE SYSTEM (3D + MORPHING)
+         * ------------------------------------------------------------------
+         */
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = (Math.random() - 0.5) * width * 2;
+                this.y = (Math.random() - 0.5) * height * 2;
+                this.z = Math.random() * CONFIG.depth;
+                this.baseSize = Math.random() * 2;
+                
+                // Heart Target Calculation
+                this.tx = 0; 
+                this.ty = 0;
+            }
+
+            // Parametric Heart Equation
+            // Returns [x, y] normalized -1 to 1
+            getHeartPosition(t) {
+                const x = 16 * Math.pow(Math.sin(t), 3);
+                const y = -(13 * Math.cos(t) - 5 * Math.cos(2*t) - 2 * Math.cos(3*t) - Math.cos(4*t));
+                return { x: x / 20, y: y / 20 }; // Scale down
+            }
+
+            update(progress) {
+                // PHASE 1: STARFIELD (Scroll 0 - 6000)
+                if (scrollPos < SCENES.ALIGN) {
+                    // Move stars towards camera based on scroll speed
+                    let speed = (targetScroll - scrollPos) * 0.1;
+                    if(speed < 2) speed = 2; // idle movement
+                    
+                    this.z -= speed;
+                    if (this.z < 1) this.z = CONFIG.depth;
+                }
+                
+                // PHASE 2: FORMATION (Scroll 6000+)
+                else {
+                    // Determine index-based angle for heart shape
+                    const idxRatio = particles.indexOf(this) / CONFIG.particleCount;
+                    const angle = idxRatio * Math.PI * 2;
+                    const pos = this.getHeartPosition(angle);
+                    
+                    // Screen Space Target
+                    const scale = Math.min(width, height) * 0.3; // Heart size
+                    this.tx = (width/2) + (pos.x * scale);
+                    this.ty = (height/2) + (pos.y * scale) - 50; // Move up slightly
+
+                    // Lerp towards target
+                    const factor = (scrollPos - SCENES.ALIGN) / (SCENES.END - SCENES.ALIGN);
+                    const clampedFactor = Math.min(Math.max(factor, 0), 1);
+                    
+                    // 3D to 2D Project logic
+                    const k = 128 / this.z;
+                    const px = (this.x * k) + (width / 2);
+                    const py = (this.y * k) + (height / 2);
+
+                    // Interpolate between Star behavior and Heart behavior
+                    this.renderX = px + (this.tx - px) * clampedFactor;
+                    this.renderY = py + (this.ty - py) * clampedFactor;
+                    
+                    // Rotate the heart slightly in 3D
+                    if(clampedFactor > 0.8) {
+                        this.renderX += Math.sin(Date.now() / 1000) * 5;
+                    }
+                }
+            }
+
+            draw() {
+                if (scrollPos < SCENES.ALIGN) {
+                    // Standard 3D Projection
+                    const k = 128 / this.z;
+                    const px = (this.x * k) + (width / 2);
+                    const py = (this.y * k) + (height / 2);
+                    
+                    // Warp effect
+                    if (scrollPos > SCENES.WARP && scrollPos < SCENES.ALIGN) {
+                        const len = (targetScroll - scrollPos) * 0.5;
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${1 - this.z / CONFIG.depth})`;
+                        ctx.lineWidth = this.baseSize;
+                        ctx.moveTo(px, py);
+                        ctx.lineTo(px, py - len); // Streak
+                        ctx.stroke();
+                    } else {
+                        const size = (1 - this.z / CONFIG.depth) * this.baseSize * 2;
+                        ctx.beginPath();
+                        ctx.fillStyle = `rgba(255, 255, 255, ${1 - this.z / CONFIG.depth})`;
+                        ctx.arc(px, py, size, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                } else {
+                    // Heart Draw
+                    ctx.beginPath();
+                    ctx.fillStyle = `rgba(255, 42, 109, 0.8)`; // Pink/Red
+                    ctx.arc(this.renderX, this.renderY, 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Init Particles
+        for(let i=0; i<CONFIG.particleCount; i++) particles.push(new Particle());
+
+        /* * ------------------------------------------------------------------
+         * LOGIC: SCROLL & INTERACTION
+         * ------------------------------------------------------------------
+         */
+        
+        // Handle Wheel / Touch
+        function handleScroll(delta) {
+            if (!started) return;
+            targetScroll += delta;
+            if (targetScroll < 0) targetScroll = 0;
+            if (targetScroll > SCENES.END) targetScroll = SCENES.END;
+        }
+
+        window.addEventListener('wheel', e => handleScroll(e.deltaY * 2));
+        
+        let touchStart = 0;
+        window.addEventListener('touchstart', e => touchStart = e.touches[0].clientY);
+        window.addEventListener('touchmove', e => {
+            const touchEnd = e.touches[0].clientY;
+            handleScroll((touchStart - touchEnd) * 3);
+            touchStart = touchEnd;
+        });
+
+        // Click to Start
+        document.getElementById('start-screen').addEventListener('click', () => {
+            started = true;
+            document.getElementById('start-screen').style.opacity = 0;
+            setTimeout(() => document.getElementById('start-screen').remove(), 1000);
+        });
+
+        /* * ------------------------------------------------------------------
+         * LOGIC: THE "NO" BUTTON PHYSICS
+         * ------------------------------------------------------------------
+         */
+        const noBtn = document.getElementById('no-btn');
+        let noPos = { x: 0, y: 0, vx: 0, vy: 0 };
+        
+        function updateNoButton() {
+            if (scrollPos < SCENES.HEART) return; // Only active at end
+
+            // Get standard position
+            const rect = noBtn.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            // Mouse Interaction (Global mouse tracker needed)
+            const dx = mouse.x - centerX;
+            const dy = mouse.y - centerY;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const threshold = 150; // Repel radius
+
+            if (dist < threshold) {
+                const force = (threshold - dist) * 0.2;
+                const angle = Math.atan2(dy, dx);
+                noPos.vx -= Math.cos(angle) * force;
+                noPos.vy -= Math.sin(angle) * force;
+            }
+
+            // Friction
+            noPos.vx *= 0.9;
+            noPos.vy *= 0.9;
+
+            // Apply Velocity
+            noPos.x += noPos.vx;
+            noPos.y += noPos.vy;
+
+            // Screen Boundaries (Bounce)
+            const buffer = 20;
+            // Note: Since button is centered by transform, we approximate bounds relative to start
+            if (noPos.x > 200) noPos.vx *= -1; 
+            if (noPos.x < -200) noPos.vx *= -1;
+            if (noPos.y > 100) noPos.vy *= -1; 
+            if (noPos.y < -100) noPos.vy *= -1;
+
+            noBtn.style.transform = `translate(calc(-50% + ${noPos.x}px), ${noPos.y}px)`;
+        }
+
+        // Mouse Tracker
+        const mouse = { x: -1000, y: -1000 };
+        window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+        window.addEventListener('touchmove', e => { mouse.x = e.touches[0].clientX; mouse.y = e.touches[0].clientY; });
+
+        /* * ------------------------------------------------------------------
+         * MAIN LOOP
+         * ------------------------------------------------------------------
+         */
+        function loop() {
+            // Smooth Scroll (Linear Interpolation)
+            scrollPos += (targetScroll - scrollPos) * CONFIG.transitionSpeed;
+
+            // Clear
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Trails effect
+            if(scrollPos > SCENES.ALIGN) ctx.fillStyle = 'rgba(0,0,0,1)'; // Clear fully for heart
+            ctx.fillRect(0, 0, width, height);
+
+            // Update Progress Bar
+            document.getElementById('progress-bar').style.width = (scrollPos / SCENES.END) * 100 + '%';
+
+            // Text Logic
+            document.getElementById('text1').className = (scrollPos > 500 && scrollPos < 2500) ? 'narrative visible' : 'narrative';
+            document.getElementById('text2').className = (scrollPos > 3500 && scrollPos < 5500) ? 'narrative visible' : 'narrative';
+            document.getElementById('text3').className = (scrollPos > 6500 && scrollPos < 8000) ? 'narrative visible' : 'narrative';
+            
+            const proposal = document.getElementById('proposal-container');
+            if (scrollPos > 8500) {
+                proposal.style.opacity = 1;
+                proposal.style.pointerEvents = 'all';
+            } else {
+                proposal.style.opacity = 0;
+                proposal.style.pointerEvents = 'none';
+            }
+
+            // Draw Particles
+            particles.forEach(p => {
+                p.update(scrollPos);
+                p.draw();
+            });
+
+            updateNoButton();
+
+            requestAnimationFrame(loop);
+        }
+        loop();
+
+        /* * ------------------------------------------------------------------
+         * WIN STATE
+         * ------------------------------------------------------------------
+         */
+        document.getElementById('yes-btn').addEventListener('click', () => {
+            document.getElementById('celebration').classList.add('active');
+            
+            // Fire confetti
+            const duration = 3000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 }
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 }
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        });
+    </script>
+</body>
+</html>

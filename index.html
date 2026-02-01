@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>A Question</title>
+    
+    <meta property="og:title" content="For you." />
+    <meta property="og:description" content="A moment in time." />
+    <meta property="og:image" content="https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=2000&auto=format&fit=crop" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,300;1,600&family=Inter:wght@300&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg: #050505;
+            --star: #ffffff;
+            --accent: #e2c2b3; /* Soft Rose Gold, not neon pink */
+        }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--bg);
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Cinematic Film Grain */
+        .grain {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("https://upload.wikimedia.org/wikipedia/commons/7/76/Noise.png");
+            opacity: 0.05; pointer-events: none; z-index: 999;
+        }
+
+        canvas { position: fixed; top: 0; left: 0; z-index: 1; }
+
+        /* --- TEXT LAYERS --- */
+        .scroll-text {
+            position: fixed; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 1.5s ease;
+            width: 100%;
+            z-index: 10;
+        }
+
+        .scroll-text h2 {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem; font-weight: 300; font-style: italic;
+            color: white; letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(255,255,255,0.3);
+            margin: 0;
+        }
+
+        .scroll-text p {
+            font-size: 0.9rem; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 4px; margin-top: 15px;
+        }
+
+        /* --- INTERACTION UI --- */
+        #ui-container {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 2s ease;
+            z-index: 20;
+        }
+
+        #main-question {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3.5rem; color: white;
+            margin-bottom: 3rem; text-align: center;
+            font-weight: 300;
+        }
+
+        .btn-wrapper {
+            position: relative; width: 100%; height: 100px;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        button {
+            padding: 16px 45px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem; letter-spacing: 3px; text-transform: uppercase;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            border-radius: 2px;
+        }
+
+        #yes-btn {
+            position: absolute; z-index: 30;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        #yes-btn:hover {
+            background: white; color: black;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+
+        #no-btn {
+            position: absolute; z-index: 29;
+            background: transparent; border-color: transparent;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* --- INTRO OVERLAY --- */
+        #intro {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: black; z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer; transition: opacity 1.5s ease;
+        }
+        #intro span {
+            font-family: 'Inter', sans-serif; font-size: 0.8rem; letter-spacing: 5px; text-transform: uppercase;
+            animation: breathe 3s infinite ease-in-out;
+        }
+
+        @keyframes breathe { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+        /* --- SUCCESS FADE --- */
+        #white-out {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: white; z-index: 2000;
+            opacity: 0; pointer-events: none; transition: opacity 3s ease;
+            display: flex; justify-content: center; align-items: center;
+        }
+        #final-msg {
+            color: black; font-family: 'Cormorant Garamond'; font-size: 2.5rem; font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="grain"></div>
+
+    <div id="intro"><span>Enter Tabitha's Realm</span></div>
+
+    <canvas id="cosmos"></canvas>
+
+    <div id="scene-1" class="scroll-text">
+        <h2>The stars align...</h2>
+        <p>Scroll down</p>
+    </div>
+    <div id="scene-2" class="scroll-text">
+        <h2>Across time and space...</h2>
+        <p>Keep going</p>
+    </div>
+    <div id="scene-3" class="scroll-text">
+        <h2>To ask one question.</h2>
+    </div>
+
+    <div id="ui-container">
+        <h1 id="main-question">Will you be my Valentine?</h1>
+        <div class="btn-wrapper">
+            <button id="yes-btn">Yes, I will</button>
+            <button id="no-btn">No</button>
+        </div>
+    </div>
+
+    <div id="white-out">
+        <h1 id="final-msg">See you soon...</h1>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        /* * ------------------------------------------------------------------
+         * THE ETHEREAL ENGINE
+         * Logic: Smooth Scroll, 3D Particle Morphing, Vector Repulsion
+         * ------------------------------------------------------------------
+         */
+
+        const canvas = document.getElementById('cosmos');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        // High particle count for "cloud" look
+        const PARTICLE_COUNT = 1200; 
+        
+        // Scroll Physics
+        let scroll = 0;
+        let targetScroll = 0;
+        const MAX_SCROLL = 10000;
+        
+        // Scenes
+        const S_INTRO = 0;
+        const S_WARP = 3000;
+        const S_FORM = 7000;
+        const S_END = 9500;
+
+        // Interaction State
+        let mouse = { x: -1000, y: -1000 };
+        let noBtnPos = { x: 0, y: 0, vx: 0, vy: 0 };
+        let isHeartFormed = false;
+
+        // --- INIT ---
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- PARTICLE CLASS ---
+        class Particle {
+            constructor() {
+                this.x = (Math.random() - 0.5) * width * 3; // Wide spread
+                this.y = (Math.random() - 0.5) * height * 3;
+                this.z = Math.random() * 2000 + 500; // Deep depth
+                this.baseSize = Math.random() * 1.5;
+                this.opacity = Math.random() * 0.5 + 0.5;
+                
+                // For Morphing
+                this.anchorX = 0;
+                this.anchorY = 0;
+                // Add noise so the heart looks organic, not mathematical
+                this.noiseX = (Math.random() - 0.5) * 30;
+                this.noiseY = (Math.random() - 0.5) * 30;
+            }
+
+            getHeartCoords(angle) {
+                // Modified formula for a fuller shape
+                const x = 16 * Math.pow(Math.sin(angle), 3);
+                const y = -(13 * Math.cos(angle) - 5 * Math.cos(2 * angle) - 2 * Math.cos(3 * angle) - Math.cos(4 * angle));
+                return { x, y };
+            }
+
+            update(progress) {
+                // 1. STARFIELD PHASE
+                if (progress < S_FORM) {
+                    // Move stars towards camera
+                    let speed = (targetScroll - scroll) * 0.1;
+                    if (speed < 0.5) speed = 0.5; // Always drifting
+                    
+                    this.z -= speed;
+                    if (this.z < 1) {
+                        this.z = 3000;
+                        this.x = (Math.random() - 0.5) * width * 3;
+                        this.y = (Math.random() - 0.5) * height * 3;
+                    }
+                } 
+                // 2. MORPH PHASE
+                else {
+                    // Calculate Heart Target
+                    const i = particles.indexOf(this);
+                    // Use index to distribute points around the heart perimeter
+                    const angle = (i / PARTICLE_COUNT) * Math.PI * 2;
+                    const coords = this.getHeartCoords(angle);
+                    
+                    // Scale heart based on screen size
+                    const scale = Math.min(width, height) / 35;
+                    
+                    this.anchorX = (width / 2) + (coords.x * scale) + this.noiseX;
+                    this.anchorY = (height / 2) + (coords.y * scale) - 50 + this.noiseY;
+
+                    // Interpolate Current Position -> Target
+                    // We use the 3D projection logic to "fly" them into place
+                    
+                    // Simple logic: Project current 3D pos to 2D, then Lerp to anchor
+                    const k = 500 / this.z;
+                    const px = (this.x * k) + (width / 2);
+                    const py = (this.y * k) + (height / 2);
+
+                    const mix = Math.min(1, (progress - S_FORM) / (S_END - S_FORM));
+                    
+                    // Smoothly transition the "Render" coordinates
+                    this.renderX = px + (this.anchorX - px) * mix;
+                    this.renderY = py + (this.anchorY - py) * mix;
+                    
+                    // Add a gentle "breathing" hover effect to the heart
+                    if (mix > 0.9) {
+                        this.renderX += Math.sin(Date.now() / 1000 + this.x) * 2;
+                        this.renderY += Math.cos(Date.now() / 1000 + this.y) * 2;
+                    }
+                }
+            }
+
+            draw() {
+                // Opacity flicker
+                const flicker = Math.random() * 0.2 + 0.8;
+                
+                if (scroll < S_FORM) {
+                    // 3D Star Draw
+                    const k = 500 / this.z;
+                    const px = (this.x * k) + (width / 2);
+                    const py = (this.y * k) + (height / 2);
+                    const s = (1 - this.z / 3000) * this.baseSize * 2;
+                    
+                    if (px > 0 && px < width && py > 0 && py < height) {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity * flicker})`;
+                        
+                        // Warp streaks
+                        if (scroll > S_INTRO && scroll < S_WARP) {
+                            const len = (targetScroll - scroll) * 0.2;
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(255,255,255,${0.2})`;
+                            ctx.lineWidth = s;
+                            ctx.moveTo(px, py);
+                            ctx.lineTo(px, py - len);
+                            ctx.stroke();
+                        } else {
+                            ctx.beginPath();
+                            ctx.arc(px, py, s, 0, Math.PI*2);
+                            ctx.fill();
+                        }
+                    }
+                } else {
+                    // Heart Particle Draw
+                    ctx.fillStyle = `rgba(226, 194, 179, ${this.opacity})`; // Rose Gold
+                    ctx.beginPath();
+                    ctx.arc(this.renderX, this.renderY, this.baseSize, 0, Math.PI*2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Init Particles
+        for(let i=0; i<PARTICLE_COUNT; i++) particles.push(new Particle());
+
+
+        // --- UI LOGIC ---
+
+        // Text Fading
+        function updateText() {
+            const s1 = document.getElementById('scene-1');
+            const s2 = document.getElementById('scene-2');
+            const s3 = document.getElementById('scene-3');
+            const ui = document.getElementById('ui-container');
+
+            // Helper for cleaner fade logic
+            const fadeInOut = (el, start, end) => {
+                if (scroll > start && scroll < end) el.style.opacity = 1;
+                else el.style.opacity = 0;
+            };
+
+            fadeInOut(s1, 100, 2500);
+            fadeInOut(s2, 3500, 6000);
+            fadeInOut(s3, 7000, 8500);
+
+            if (scroll > 9000) {
+                ui.style.opacity = 1;
+                ui.style.pointerEvents = 'all';
+                isHeartFormed = true;
+            } else {
+                ui.style.opacity = 0;
+                ui.style.pointerEvents = 'none';
+                isHeartFormed = false;
+            }
+        }
+
+        // Button Physics (The Gentle Repulsion)
+        function updateButtons() {
+            if (!isHeartFormed) return;
+
+            const noBtn = document.getElementById('no-btn');
+            
+            // NOTE: The button is centered by flexbox. We apply translation relative to that.
+            // Calculate absolute position of the "center point" where the button should be
+            const rect = noBtn.parentElement.getBoundingClientRect(); // Container rect
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            // Distance to mouse
+            const dx = mouse.x - (centerX + noBtnPos.x);
+            const dy = mouse.y - (centerY + noBtnPos.y);
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            
+            const RADIUS = 150; // Interaction radius
+
+            if (dist < RADIUS) {
+                // Calculate repulsion force
+                // Stronger as you get closer
+                const force = (RADIUS - dist) / RADIUS; 
+                const angle = Math.atan2(dy, dx);
+                
+                // Push away
+                noBtnPos.vx -= Math.cos(angle) * force * 2;
+                noBtnPos.vy -= Math.sin(angle) * force * 2;
+            }
+
+            // Friction (Damping) - Makes it drift slowly
+            noBtnPos.vx *= 0.92;
+            noBtnPos.vy *= 0.92;
+
+            // Apply velocity
+            noBtnPos.x += noBtnPos.vx;
+            noBtnPos.y += noBtnPos.vy;
+
+            // Soft Boundaries (Keep it somewhat near the buttons)
+            // If it drifts too far (>200px), gently pull it back
+            const distHome = Math.sqrt(noBtnPos.x**2 + noBtnPos.y**2);
+            if (distHome > 200) {
+                noBtnPos.vx -= noBtnPos.x * 0.01;
+                noBtnPos.vy -= noBtnPos.y * 0.01;
+            }
+
+            // Apply transform using translate3d for smoothness
+            noBtn.style.transform = `translate3d(${noBtnPos.x}px, ${noBtnPos.y}px, 0)`;
+        }
+
+
+        // --- EVENTS ---
+
+        // Custom Scroll Handling
+        window.addEventListener('wheel', (e) => {
+            targetScroll += e.deltaY;
+            targetScroll = Math.max(0, Math.min(targetScroll, MAX_SCROLL));
+        });
+
+        // Touch handling
+        let touchStart = 0;
+        window.addEventListener('touchstart', e => touchStart = e.touches[0].clientY);
+        window.addEventListener('touchmove', e => {
+            const touchDelta = touchStart - e.touches[0].clientY;
+            targetScroll += touchDelta * 2;
+            targetScroll = Math.max(0, Math.min(targetScroll, MAX_SCROLL));
+            touchStart = e.touches[0].clientY;
+            
+            // Update "mouse" for mobile button physics
+            mouse.x = e.touches[0].clientX;
+            mouse.y = e.touches[0].clientY;
+        });
+
+        window.addEventListener('mousemove', e => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+
+        // Start Interaction
+        const intro = document.getElementById('intro');
+        intro.addEventListener('click', () => {
+            intro.style.opacity = 0;
+            setTimeout(() => intro.remove(), 1500);
+        });
+
+        // Yes Interaction
+        document.getElementById('yes-btn').addEventListener('click', () => {
+            // 1. Confetti (Gold/White colors only - keeping it classy)
+            const duration = 3000;
+            const end = Date.now() + duration;
+
+            (function frame() {
+                confetti({
+                    particleCount: 4,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#ffffff', '#e2c2b3'] // White and Rose Gold
+                });
+                confetti({
+                    particleCount: 4,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#ffffff', '#e2c2b3']
+                });
+
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+
+            // 2. White out
+            const whiteOut = document.getElementById('white-out');
+            whiteOut.style.opacity = 1;
+        });
+
+
+        // --- MAIN LOOP ---
+        function animate() {
+            // Smooth Scroll Lerp
+            scroll += (targetScroll - scroll) * 0.08;
+            
+            ctx.clearRect(0, 0, width, height);
+            
+            particles.forEach(p => {
+                p.update(scroll);
+                p.draw();
+            });
+
+            updateText();
+            updateButtons();
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>Incoming Transmission...</title>
+    <meta property="og:title" content="System Message: I have a question... 🤖" />
+    <meta property="og:description" content="Decryption complete. Click to view the request." />
+    <meta property="og:image" content="http://googleusercontent.com/image_collection/image_retrieval/18283995024199178448_0" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="http://googleusercontent.com/image_collection/image_retrieval/18283995024199178448_0">
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root { --matrix-green: #00ff41; }
+        
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: black; overflow: hidden;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        /* Matrix Background Canvas */
+        #matrix-canvas {
+            position: fixed; top: 0; left: 0; z-index: 1;
+        }
+
+        #container {
+            position: relative; z-index: 10;
+            background: rgba(10, 10, 10, 0.9);
+            padding: 2.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--matrix-green);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.3);
+            text-align: center;
+            max-width: 450px; width: 85%;
+        }
+
+        h1 {
+            color: var(--matrix-green);
+            font-size: 1.4rem; margin-bottom: 2rem;
+            text-shadow: 0 0 5px var(--matrix-green);
+        }
+
+        .buttons {
+            display: flex; justify-content: center; gap: 2rem;
+            min-height: 50px; align-items: center;
+        }
+
+        button {
+            padding: 12px 24px; font-weight: bold; cursor: pointer;
+            background: transparent; color: var(--matrix-green);
+            border: 1px solid var(--matrix-green);
+            transition: all 0.2s ease-in-out;
+            outline: none;
+        }
+
+        #yesBtn:hover {
+            background: var(--matrix-green); color: black;
+            box-shadow: 0 0 20px var(--matrix-green);
+        }
+
+        #noBtn { position: absolute; }
+
+        .hidden { display: none; }
+
+        #success-message h1 { font-size: 2.5rem; }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix-canvas"></canvas>
+
+    <div id="container">
+        <div id="question-pannel">
+            <h1 id="question-text">> QUERY: WILL YOU GO OUT WITH ME?</h1>
+            <div class="buttons">
+                <button id="yesBtn">ACCEPT</button>
+                <button id="noBtn">DECLINE</button>
+            </div>
+        </div>
+
+        <div id="success-message" class="hidden">
+            <h1>SYSTEM OVERRIDE: YES ❤️</h1>
+            <p style="color: var(--matrix-green);">Connection established. Check your DMs.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Matrix Rain Logic ---
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        let columns;
+        let drops = [];
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            columns = Math.floor(canvas.width / 20);
+            drops = new Array(columns).fill(1);
+        }
+        window.onresize = resize;
+        resize();
+
+        function drawRain() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#003b00'; // Darker green for rain
+            ctx.font = '15px monospace';
+            for (let i = 0; i < drops.length; i++) {
+                const text = String.fromCharCode(0x30A0 + Math.random() * 96);
+                ctx.fillText(text, i * 20, drops[i] * 20);
+                if (drops[i] * 20 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawRain, 33);
+
+        // --- Interaction Logic ---
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+
+        const moveNo = () => {
+            // Efficiency: Ensure the button stays within visible bounds
+            const padding = 20;
+            const x = Math.random() * (window.innerWidth - noBtn.offsetWidth - padding);
+            const y = Math.random() * (window.innerHeight - noBtn.offsetHeight - padding);
+            
+            noBtn.style.left = `${Math.max(padding, x)}px`;
+            noBtn.style.top = `${Math.max(padding, y)}px`;
+        };
+
+        // Effectiveness: Handle both Mouse and Touch (Mobile)
+        noBtn.addEventListener('mouseover', moveNo);
+        noBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Prevents accidental clicking on mobile
+            moveNo();
+        });
+
+        yesBtn.addEventListener('click', () => {
+            document.getElementById('question-pannel').classList.add('hidden');
+            document.getElementById('success-message').classList.remove('hidden');
+            confetti({
+                particleCount: 200, spread: 100, origin: { y: 0.6 },
+                colors: ['#00ff41', '#ffffff']
+            });
+        });
+    </script>
+</body>
+</html>
